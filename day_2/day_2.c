@@ -1,30 +1,62 @@
+/* Advent of Code - Day 2 | Antonin Censier */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
 
-typedef struct{
-    int **tab;
-    int rows; 
-    int *nb_cols;
-} tableau_2D;
-// int get_data(){
+/* Structure adaptée au problème */
+typedef struct {
+    int **tab;     // tableau 2D
+    int rows;      // nombre de lignes
+    int *nb_cols;  // nombre de valeurs par ligne
+} Tab;
 
-// }
 
-// 
-bool test_ligne(int *ligne, int nb_value){
-    if(nb_value == 1){
+bool test_ligne(int *ligne, int nb_value);
+int get_data(Tab *t);
+int get_nb_right_line(Tab *t);
+int get_nb_right_line_flex(Tab *t);
+
+
+int main() {
+    Tab t;
+    if(get_data(&t) != 1){
+        fprintf(stderr, "Erreur lors du chargement des données.\n");
+        return 0;
+    }
+
+    // -- Partie 1
+    int nb_right = get_nb_right_line(&t);
+    printf("\nLe nombre de bonne ligne est de %d\n", nb_right);
+
+    // -- Partie 2
+    int nb_right_flex = get_nb_right_line_flex(&t);
+    printf("\nAvec 1 de souplesse le nombre de bonne ligne est de %d\n", nb_right_flex);
+    
+    for (int i = 0; i < t.rows; i++) {
+        free(t.tab[i]);
+    }
+    free(t.tab);
+    free(t.nb_cols);
+    return 0;
+}
+
+
+/* 
+* Teste si la ligne est croissante/décroissante avec différence de 1 à 3.
+* Prend en argument la ligne et le nombre de valeur dans la ligne.
+*/
+bool test_ligne(int *ligne, int nb_value) {
+    if(nb_value == 1) {
         return true;
     }
 
     bool croissant;
-
     int first_diff = ligne[1] - ligne[0];
 
     if (abs(first_diff) < 1 || abs(first_diff) > 3) return false;
-
     croissant = first_diff > 0;
 
     for (int j = 1; j < nb_value; j++) {
@@ -40,13 +72,16 @@ bool test_ligne(int *ligne, int nb_value){
     return true;
 }
 
-int get_nb_right_line(tableau_2D *t){
-
+/* 
+* Parcourt le tableau et renvoie le nombre de lignes valides.
+* Prend en argument le tableau.
+*/
+int get_nb_right_line(Tab *t) {
     int nb_right_rows = 0;
 
-    for(int i = 0; i < t->rows; i++){
+    for(int i = 0; i < t->rows; i++) {
 
-        if (test_ligne(t->tab[i], t->nb_cols[i])){
+        if (test_ligne(t->tab[i], t->nb_cols[i])) {
             nb_right_rows++;
         }
 
@@ -54,18 +89,21 @@ int get_nb_right_line(tableau_2D *t){
     return nb_right_rows;
 }
 
-int get_nb_right_line_flex(tableau_2D *t){
-
+/* 
+* Renvoie le nombre de lignes valides avec un nombre de tolérance.
+* Prend en argument le tableau.
+*/
+int get_nb_right_line_flex(Tab *t) {
     int nb_right_rows = 0;
 
-    for(int i = 0; i < t->rows; i++){
+    for(int i = 0; i < t->rows; i++) {
 
-        if (test_ligne(t->tab[i], t->nb_cols[i])){
+        if (test_ligne(t->tab[i], t->nb_cols[i])) {
             nb_right_rows++;
         }
         else{
-            for(int j = 0; j < t->nb_cols[i]; j++){
-                // Créer une nouvelle ligne sans l'élément j
+            for(int j = 0; j < t->nb_cols[i]; j++) {
+                // Crée une nouvelle ligne sans [j]
                 int new_len = t->nb_cols[i] - 1;
                 int *new_line = malloc(new_len * sizeof(int));
                 if (!new_line) {
@@ -73,14 +111,14 @@ int get_nb_right_line_flex(tableau_2D *t){
                     exit(1);
                 }
 
-                // Copier tout sauf l'élément j
+                // Copie tout sauf [j]
                 for (int k = 0, idx = 0; k < t->nb_cols[i]; k++) {
-                    if (k == j) continue;  // saute l'élément à retirer
+                    if (k == j) continue;
                     new_line[idx++] = t->tab[i][k];
                 }
 
-                //test de la ligne
-                if(test_ligne(new_line, t->nb_cols[i] - 1)){
+                // Test de la ligne
+                if(test_ligne(new_line, t->nb_cols[i] - 1)) {
                     free(new_line);
                     nb_right_rows++;
                     break;
@@ -92,77 +130,48 @@ int get_nb_right_line_flex(tableau_2D *t){
     return nb_right_rows;
 }
 
-int main() {
+/* 
+* Initialise le tableau avec les données de FILENAME.
+* Prend en argument le tableau et renvoie 1 si pas d'erreurs.
+*/
+int get_data(Tab *t) {
     FILE *f = fopen("data.txt", "r");
     if (!f) {
         perror("Erreur ouverture fichier");
-        return 1;
+        return 0;
     }
 
-    tableau_2D t;
-    t.tab = NULL;  // tableau 2D
-    t.nb_cols = NULL;  // nombre de valeurs par ligne
-    t.rows = 0;      // nombre de lignes
-
-    char buffer[1024];  // pour lire une ligne complète
+    t->tab = NULL;
+    t->nb_cols = NULL;
+    t->rows = 0;
+    char buffer[1024];
 
     while (fgets(buffer, sizeof(buffer), f)) {
         int *ligne = NULL;
         int n = 0;
         int val;
         char *ptr = buffer;
-
-        // Lire tous les entiers de la ligne
+    
+        // Extraire données ligne
         while (sscanf(ptr, "%d", &val) == 1) {
-            int *tmp = realloc(ligne, (n + 1) * sizeof(int));
-            if (!tmp) {
-                perror("Erreur realloc ligne");
-                free(ligne);
-                fclose(f);
-                return 1;
-            }
-            ligne = tmp;
+            ligne = realloc(ligne, (n + 1) * sizeof(int));
             ligne[n++] = val;
-
-            // avancer le pointeur dans la ligne
+    
+            // Avance le pointeur
             while (*ptr != ' ' && *ptr != '\t' && *ptr != '\n' && *ptr != '\0')
                 ptr++;
             while (*ptr == ' ' || *ptr == '\t')
                 ptr++;
         }
-
-        // Ajouter cette ligne au tableau 2D
-        int **tmp_tab = realloc(t.tab, (t.rows + 1) * sizeof(int *));
-        int *tmp_cols = realloc(t.nb_cols, (t.rows + 1) * sizeof(int));
-        if (!tmp_tab || !tmp_cols) {
-            perror("Erreur realloc tableau principal");
-            free(ligne);
-            fclose(f);
-            return 1;
-        }
-        t.tab = tmp_tab;
-        t.nb_cols = tmp_cols;
-        t.tab[t.rows] = ligne;
-        t.nb_cols[t.rows] = n;
-        t.rows++;
-    }
-
-    fclose(f);
-
-    int nb_right = get_nb_right_line(&t);
-
-    printf("\nLe nombre de bonne ligne est de %d\n", nb_right);
-
-    int nb_right_flex = get_nb_right_line_flex(&t);
-
-    printf("\nAvec 1 de souplesse le nombre de bonne ligne est de %d\n", nb_right_flex);
     
-    for (int i = 0; i < t.rows; i++) {
-        free(t.tab[i]);
+        // Ajoute cette ligne au tableau 2D
+        t->tab = realloc(t->tab, (t->rows + 1) * sizeof(int *));
+        t->nb_cols = realloc(t->nb_cols, (t->rows + 1) * sizeof(int));
+        t->tab[t->rows] = ligne;
+        t->nb_cols[t->rows] = n;
+        t->rows++;
     }
-    free(t.tab);
-    free(t.nb_cols);
-
-    return 0;
-
+    
+    fclose(f);
+    return 1;
 }
