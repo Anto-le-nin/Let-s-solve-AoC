@@ -94,7 +94,7 @@ int part_two(){
                 min = v[0];
                 //supp v 
             }
-           
+            // je fais un test gti
             fresh.push_back({min, max});
         }
 
